@@ -1,0 +1,102 @@
+<template>
+  <div class="page" data-name="catalog">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="title">配信先アップロード</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="block">
+        <div class="block-title">配信先リストのCSVファイルを指定してください</div>
+        <div class="block-title">1列目にInstallationクラスのobjectIdが入っている状態とします。ヘッダー行は不要です。</div>
+      </div>
+      <div class="list simple-list">
+        <ul>
+					<li>${ push.title }</li>
+					<li>${ push.message }</li>
+        </ul>
+      </div>
+      <div class="block">
+        <div class="block-title">CSVファイルを指定する</div>
+      </div>
+			<div class="list">
+				<form id="upload">
+					<ul>
+						<li class="item-content item-input">
+							<div class="item-media">
+								<i class="f7-icons">document</i>
+							</div>
+							<div class="item-inner">
+								<div class="item-title item-label">CSVファイル</div>
+								<div class="item-input-wrap">
+									<input type="file" name="csv" accept="text/csv" @change=${load} />
+								</div>
+							</div>
+						</li>
+						${ csv.length > 0 ?
+							$h`
+								<li class="item-content item-input">
+									<div class="item-inner">
+										<div class="item-title item-label">行数： ${csv.length}。作成されるプッシュ通知 ${Math.ceil(csv.length/length)}</div>
+									</div>
+								</li>
+							` :
+							''
+						}
+						<li class="item-content item-input">
+							<button class="button button-large button-fill" @click=${upload}>
+								保存する
+							</button>
+						</li>
+					</ul>
+				</form>
+			</div>
+			<div id="logs">
+				${ logs.map(log => $h`<div>${log}</div>`) }
+			</div>
+    </div>
+  </div>
+</template>
+<script>
+	const sliceByNumber = (array, number) => {
+		const length = Math.ceil(array.length / number)
+		return new Array(length).fill().map((_, i) =>
+			array.slice(i * number, (i + 1) * number)
+		)
+	}
+  export default (props, { $f7route, $store, $onMounted, $update }) => {
+		const { objectId } = $f7route.params;
+    const { pushes } = $store.getters;
+		const push = pushes.value.find(push => push.objectId === objectId);
+		const length = 5000;
+		let csv = [];
+		let logs = [];
+		const load = async (e) => {
+			e.preventDefault();
+			csv = (await e.target.files[0].text()).split(/\r\n|\n|\r/);
+			$update();
+		}
+		const upload = async (e) => {
+			e.preventDefault();
+			const ary = sliceByNumber(csv, length);
+			['objectId', 'createDate', 'updateDate', 'deliveryPlanNumber', 'deliveryNumber', 'status', 'error'].forEach(key => {
+				delete push[key];
+			});
+			ary.forEach(async (ids) => {
+				push
+					.set('target', ['ios', 'android'])
+					.set('searchCondition', {
+						objectId: {
+							'$in': ids
+						}
+					});
+				await push.send();
+				logs.push(`配信登録完了：${push.objectId}`);
+				$update();
+			});
+		}
+    return $render;
+  }
+
+</script>

@@ -1,0 +1,37 @@
+<template>
+  <div class="page" data-name="catalog">
+    <div class="navbar">
+      <div class="navbar-bg"></div>
+      <div class="navbar-inner sliding">
+        <div class="title">プッシュ通知選択</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="block">
+        <div class="block-title">プッシュ通知を選択してください</div>
+        <div class="block-title">対象となるプッシュ通知は配信端末を<strong>applicationName = TEMPLATE</strong>としたプッシュ通知になります。</div>
+      </div>
+      <div class="list links-list">
+        <ul>
+          ${pushes.value.map(push => $h`
+            <li><a href="/push/${push.objectId}/">${push.title}</a></li>
+          `)}
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+  export default (props, { $store, $onMounted }) => {
+    const { pushes } = $store.getters;
+
+    $onMounted(async () => {
+      const pushes = await ncmb.Push
+        .equalTo('searchCondition', JSON.stringify({applicationName: 'TEMPLATE'}))
+        .fetchAll();
+      $store.dispatch('setPushes', pushes);
+    });
+    return $render;
+  }
+
+</script>
